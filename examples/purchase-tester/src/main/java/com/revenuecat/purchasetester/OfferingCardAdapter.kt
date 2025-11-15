@@ -7,6 +7,7 @@ import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.revenuecat.purchases.Offering
 import com.revenuecat.purchases_sample.databinding.OfferingCardBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 
 class OfferingCardAdapter(
     private var offerings: List<Offering>,
@@ -31,8 +32,17 @@ class OfferingCardAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(offering: Offering, isCurrent: Boolean) {
-            binding.offering = offering
-            binding.isCurrent = isCurrent
+            // Update views manually
+            val offeringNameText = offering.serverDescription + if (isCurrent) " (current)" else ""
+            binding.offeringName.text = offeringNameText
+            
+            // Update identifier row view
+            binding.offeringIdentifier.headerView.text = "Identifier: "
+            binding.offeringIdentifier.value.text = offering.identifier
+            
+            // Update packages count
+            binding.offeringNumPackages.text = "${offering.availablePackages.size} packages included"
+            
             binding.root.setOnClickListener {
                 listener.onOfferingClicked(binding.root, offering)
             }

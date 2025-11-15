@@ -35,6 +35,7 @@ import com.revenuecat.purchases.models.StoreTransaction
 import com.revenuecat.purchases.models.SubscriptionOption
 import com.revenuecat.purchases_sample.R
 import com.revenuecat.purchases_sample.databinding.FragmentOfferingBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -86,11 +87,17 @@ class OfferingFragment : Fragment(), PackageCardAdapter.PackageCardAdapterListen
     }
 
     private fun setupAddOnPurchaseUI() {
-        binding.isAddOnPurchaseMode = false
-        binding.isPurchaseButtonEnabled = false
+        var isAddOnPurchaseMode = false
+        var isPurchaseButtonEnabled = false
+
+        // Update UI visibility
+        binding.isAddOnPurchaseUpgradeCheckbox.visibility = View.GONE
+        binding.purchaseAllButton.visibility = View.GONE
 
         binding.addOnPurchaseCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            binding.isAddOnPurchaseMode = isChecked
+            isAddOnPurchaseMode = isChecked
+            binding.isAddOnPurchaseUpgradeCheckbox.visibility = if (isChecked) View.VISIBLE else View.GONE
+            binding.purchaseAllButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             packageCardAdapter?.setAddOnMode(isChecked)
             // Force refresh the adapter to update UI
             packageCardAdapter?.notifyDataSetChanged()
@@ -127,7 +134,13 @@ class OfferingFragment : Fragment(), PackageCardAdapter.PackageCardAdapterListen
 
     private fun populateOfferings(offerings: Offerings) {
         val offering = offerings.getOffering(offeringId) ?: return
-        binding.offering = offering
+        
+        // Update offering details manually
+        binding.offeringDetailsName.text = offering.identifier
+        offering.serverDescription?.let { description ->
+            setRowViewValues(binding.offeringDetailsServerDescription, "Description:", description)
+        }
+        binding.offeringDetailsOpenWplButton.visibility = if (offering.webCheckoutURL != null) View.VISIBLE else View.GONE
 
         binding.offeringDetailsPackagesRecycler.layoutManager = LinearLayoutManager(requireContext())
 
@@ -197,8 +210,14 @@ class OfferingFragment : Fragment(), PackageCardAdapter.PackageCardAdapterListen
     }
 
     private fun updatePurchaseButtonState(hasSelectedPackages: Boolean, hasValidBaseProduct: Boolean) {
-        val isEnabled = binding.isAddOnPurchaseMode == true && hasSelectedPackages && hasValidBaseProduct
-        binding.isPurchaseButtonEnabled = isEnabled
+        val isAddOnPurchaseMode = binding.addOnPurchaseCheckbox.isChecked
+        val isEnabled = isAddOnPurchaseMode && hasSelectedPackages && hasValidBaseProduct
+        binding.purchaseAllButton.isEnabled = isEnabled
+    }
+
+    private fun setRowViewValues(rowViewBinding: RowViewBinding, header: String, detail: String?) {
+        rowViewBinding.headerView.text = header
+        rowViewBinding.value.text = detail?.takeIf { it.isNotEmpty() } ?: "None"
     }
 
     @OptIn(ExperimentalPreviewRevenueCatPurchasesAPI::class)

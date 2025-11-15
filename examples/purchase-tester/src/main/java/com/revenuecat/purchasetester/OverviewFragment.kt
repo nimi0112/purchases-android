@@ -37,6 +37,7 @@ import com.revenuecat.purchases.models.StoreProduct
 import com.revenuecat.purchases.models.StoreTransaction
 import com.revenuecat.purchases_sample.R
 import com.revenuecat.purchases_sample.databinding.FragmentOverviewBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -85,8 +86,38 @@ class OverviewFragment : Fragment(), OfferingCardAdapter.OfferingCardAdapterList
         }
 
         viewModel = OverviewViewModel(this)
-        binding.lifecycleOwner = this
-        binding.viewModel = viewModel
+
+        // Set up click listeners that were previously using data binding
+        binding.customerInfoCard.setOnClickListener {
+            viewModel.onCardClicked()
+        }
+        binding.customerInfoCopyUserIdButton.setOnClickListener {
+            viewModel.onCopyClicked()
+        }
+        binding.customerInfoSetAttribute.setOnClickListener {
+            viewModel.onSetAttributeClicked()
+        }
+        binding.customerInfoSyncAttributes.setOnClickListener {
+            viewModel.onSyncAttributesClicked()
+        }
+        binding.customerInfoManageButton.setOnClickListener {
+            viewModel.onManageClicked()
+        }
+        binding.customerInfoRestorePurchasesButton.setOnClickListener {
+            viewModel.onRestoreClicked()
+        }
+        binding.blockStoreClearButton.setOnClickListener {
+            viewModel.onBlockStoreClearClicked(requireContext())
+        }
+        binding.customerInfoFetchVcsButton.setOnClickListener {
+            viewModel.onFetchVCsClicked()
+        }
+        binding.customerInfoInvalidateVcsCacheButton.setOnClickListener {
+            viewModel.onInvalidateVirtualCurrenciesCache()
+        }
+        binding.customerInfoFetchVcCacheButton.setOnClickListener {
+            viewModel.onFetchVCCache()
+        }
 
         return binding.root
     }
@@ -95,6 +126,34 @@ class OverviewFragment : Fragment(), OfferingCardAdapter.OfferingCardAdapterList
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
         view.doOnPreDraw { startPostponedEnterTransition() }
+
+        // Observe ViewModel LiveData and update views manually
+        viewModel.customerInfo.observe(viewLifecycleOwner) { customerInfo ->
+            updateCustomerInfoViews(customerInfo)
+        }
+        viewModel.activeEntitlements.observe(viewLifecycleOwner) { entitlements ->
+            setRowViewValues(binding.customerInfoActiveEntitlements, "Active Entitlements: ", entitlements)
+        }
+        viewModel.allEntitlements.observe(viewLifecycleOwner) { entitlements ->
+            setRowViewValues(binding.customerInfoAllEntitlements, "All Entitlements: ", entitlements)
+        }
+        viewModel.formattedVirtualCurrencies.observe(viewLifecycleOwner) { vcs ->
+            setRowViewValues(binding.customerInfoVirtualCurrencies, "Virtual Currencies: ", vcs)
+        }
+        viewModel.verificationResult.observe(viewLifecycleOwner) { verificationResult ->
+            setRowViewValues(
+                binding.customerInfoVerificationResult,
+                "Current verification result: ",
+                verificationResult?.name ?: ""
+            )
+        }
+        viewModel.customerInfoJson.observe(viewLifecycleOwner) { json ->
+            setRowViewValues(binding.customerInfoJsonObject, "JSON Object", json ?: "")
+        }
+        viewModel.isRestoring.observe(viewLifecycleOwner) { isRestoring ->
+            binding.customerInfoRestorePurchasesButton.isEnabled = !isRestoring
+            binding.customerInfoRestoreProgress.visibility = if (isRestoring) View.VISIBLE else View.GONE
+        }
 
         // This should be done in a ViewModel, but it's a test app ¯\_(ツ)_/¯
         (activity?.application as? MainApplication)?.lastCustomerInfoLiveData?.observe(viewLifecycleOwner) {
@@ -402,5 +461,32 @@ class OverviewFragment : Fragment(), OfferingCardAdapter.OfferingCardAdapterList
     private fun navigateToProxyFragment() {
         val directions = OverviewFragmentDirections.actionOverviewFragmentToProxySettingsBottomSheetFragment()
         findNavController().navigate(directions)
+    }
+
+    private fun updateCustomerInfoViews(customerInfo: CustomerInfo?) {
+        if (customerInfo == null) return
+
+        // Update request date
+        customerInfo.requestDate?.let { date ->
+            binding.customerInfoRequestDate.text = " as of $date"
+            binding.customerInfoRequestDate.visibility = View.VISIBLE
+        } ?: run {
+            binding.customerInfoRequestDate.visibility = View.GONE
+        }
+
+        // Update app user ID
+        setRowViewValues(
+            binding.customerInfoAppUserId,
+            "Original App User Id: ",
+            customerInfo.originalAppUserId
+        )
+
+        // Update manage button visibility
+        binding.customerInfoManageButton.visibility = if (customerInfo.managementURL != null) View.VISIBLE else View.GONE
+    }
+
+    private fun setRowViewValues(rowViewBinding: RowViewBinding, header: String, detail: String?) {
+        rowViewBinding.headerView.text = header
+        rowViewBinding.value.text = detail?.takeIf { it.isNotEmpty() } ?: "None"
     }
 }

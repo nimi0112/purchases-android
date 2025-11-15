@@ -12,6 +12,7 @@ import com.revenuecat.purchases.amazon.amazonProduct
 import com.revenuecat.purchases.models.StoreProduct
 import com.revenuecat.purchases.models.googleProduct
 import com.revenuecat.purchases_sample.databinding.PackageCardBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 
 class DeprecatedPackageCardAdapter(
     private val packages: List<Package>,
@@ -36,9 +37,27 @@ class DeprecatedPackageCardAdapter(
 
         fun bind(currentPackage: Package) {
             val product = currentPackage.product
-            binding.currentPackage = currentPackage
-            binding.isSubscription = product.type == ProductType.SUBS
-            binding.isActive = activeSubscriptions.contains(product.id)
+            val isSubscription = product.type == ProductType.SUBS
+            val isActive = activeSubscriptions.contains(product.id)
+            
+            // Update views manually
+            binding.packageProductTitle.text = product.title + if (isActive) " (active)" else ""
+            binding.packageProductDescription.text = product.description
+            
+            setRowViewValues(binding.packageProductSku, "Sku:", product.id)
+            
+            val packageTypeDetail = if (currentPackage.packageType == PackageType.CUSTOM) {
+                "custom -> ${currentPackage.packageType.identifier}"
+            } else {
+                currentPackage.packageType.toString()
+            }
+            setRowViewValues(binding.packageType, "Package Type:", packageTypeDetail)
+            
+            binding.packageOneTimePrice.root.visibility = if (isSubscription) View.GONE else View.VISIBLE
+            if (!isSubscription) {
+                setRowViewValues(binding.packageOneTimePrice, "One Time Price:", product.price.formatted)
+            }
+            
             // Upgrades are no longer possible with deprecated methods.
             binding.isUpgradeCheckbox.isVisible = false
 
@@ -62,20 +81,20 @@ class DeprecatedPackageCardAdapter(
             binding.optionBuyButton.visibility = View.INVISIBLE
             binding.packageSubscriptionOptionGroup.visibility = View.INVISIBLE
 
-            binding.packageType.detail = if (currentPackage.packageType == PackageType.CUSTOM) {
-                "custom -> ${currentPackage.packageType.identifier}"
-            } else {
-                currentPackage.packageType.toString()
-            }
-
-            binding.packageDetailsJsonObject.detail = product.googleProduct?.productDetails?.toString()
+            val jsonDetail = product.googleProduct?.productDetails?.toString()
                 ?: product.amazonProduct?.originalProductJSON.toString()
+            setRowViewValues(binding.packageDetailsJsonObject, "Product JSON", jsonDetail)
 
             binding.root.setOnClickListener {
                 with(binding.packageDetailsContainer) {
                     visibility = if (visibility == View.GONE) View.VISIBLE else View.GONE
                 }
             }
+        }
+        
+        private fun setRowViewValues(rowViewBinding: RowViewBinding, header: String, detail: String?) {
+            rowViewBinding.headerView.text = header
+            rowViewBinding.value.text = detail?.takeIf { it.isNotEmpty() } ?: "None"
         }
     }
 

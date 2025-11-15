@@ -17,6 +17,7 @@ import com.revenuecat.purchases.models.StoreProduct
 import com.revenuecat.purchases.models.SubscriptionOption
 import com.revenuecat.purchases.models.googleProduct
 import com.revenuecat.purchases_sample.databinding.PackageCardBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 
 class PackageCardAdapter(
     private val packages: List<Package>,
@@ -83,13 +84,58 @@ class PackageCardAdapter(
         @Suppress("LongMethod")
         fun bind(currentPackage: Package, isPlayStore: Boolean, isAddOnMode: Boolean, isSelected: Boolean) {
             val product = currentPackage.product
-            binding.currentPackage = currentPackage
-            binding.isSubscription = product.type == ProductType.SUBS
-            binding.isActive = activeSubscriptions.contains(product.id)
-            binding.isPlayStore = isPlayStore
-            binding.isAddOnMode = isAddOnMode
+            
+            // Update views manually
+            val isSubscription = product.type == ProductType.SUBS
+            val isActive = activeSubscriptions.contains(product.id)
+            
+            // Update title
+            binding.packageProductTitle.text = product.title + if (isActive) " (active)" else ""
+            
+            // Update description
+            binding.packageProductDescription.text = product.description
+            
+            // Update SKU row view
+            setRowViewValues(binding.packageProductSku, "Sku:", product.id)
+            
+            // Update package type row view (detail will be set below)
+            val packageTypeDetail = if (currentPackage.packageType == PackageType.CUSTOM) {
+                "custom -> ${currentPackage.packageType.identifier}"
+            } else {
+                currentPackage.packageType.toString()
+            }
+            setRowViewValues(binding.packageType, "Package Type:", packageTypeDetail)
+            
+            // Update one-time price visibility and value
+            binding.packageOneTimePrice.root.visibility = if (isSubscription) View.GONE else View.VISIBLE
+            if (!isSubscription) {
+                setRowViewValues(binding.packageOneTimePrice, "One Time Price:", product.price.formatted)
+            }
+            
+            // Update subscription option visibility
+            val showSubscriptionOptions = isSubscription && isPlayStore
+            binding.packageSubscriptionOptionTitle.visibility = if (showSubscriptionOptions) View.VISIBLE else View.GONE
+            binding.packageSubscriptionOptionGroup.visibility = if (showSubscriptionOptions) View.VISIBLE else View.GONE
+            
+            // Update checkbox visibility and state
+            binding.buyOptionCheckbox.visibility = if (isAddOnMode) View.VISIBLE else View.GONE
+            binding.baseProductCheckbox.visibility = if (isAddOnMode) View.VISIBLE else View.GONE
+            binding.isUpgradeCheckbox.visibility = if (isAddOnMode) View.GONE else View.VISIBLE
+            binding.isPersonalizedCheckbox.visibility = if (isAddOnMode) View.GONE else View.VISIBLE
+            
+            // Update button visibility
+            binding.packageBuyButton.visibility = if (isAddOnMode) View.GONE else View.VISIBLE
+            binding.productBuyButton.visibility = if (isAddOnMode) View.GONE else View.VISIBLE
+            binding.optionBuyButton.visibility = if (isPlayStore && !isAddOnMode) View.VISIBLE else View.INVISIBLE
+            
+            // Update WPL button visibility
+            binding.wplBuyButton.visibility = if (currentPackage.webCheckoutURL == null) View.GONE else View.VISIBLE
+            
+            // Update enabled state
+            binding.isUpgradeCheckbox.isEnabled = isPlayStore
+            binding.isPersonalizedCheckbox.isEnabled = isPlayStore
+            
             binding.buyOptionCheckbox.setOnCheckedChangeListener(null)
-            binding.isSelected = isSelected
             binding.buyOptionCheckbox.isChecked = isSelected
             binding.buyOptionCheckbox.setOnCheckedChangeListener { _, checked ->
                 if (checked) {
@@ -156,14 +202,10 @@ class PackageCardAdapter(
                 binding.root.context.startActivity(intent)
             }
 
-            binding.packageType.detail = if (currentPackage.packageType == PackageType.CUSTOM) {
-                "custom -> ${currentPackage.packageType.identifier}"
-            } else {
-                currentPackage.packageType.toString()
-            }
-
-            binding.packageDetailsJsonObject.detail = product.googleProduct?.productDetails?.toString()
+            // Update package details JSON
+            val jsonDetail = product.googleProduct?.productDetails?.toString()
                 ?: product.amazonProduct?.originalProductJSON.toString()
+            setRowViewValues(binding.packageDetailsJsonObject, "Product JSON", jsonDetail)
 
             bindSubscriptionOptions(currentPackage)
 
@@ -243,6 +285,11 @@ class PackageCardAdapter(
                 .setMessage(errorMessage)
                 .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
                 .show()
+        }
+        
+        private fun setRowViewValues(rowViewBinding: RowViewBinding, header: String, detail: String?) {
+            rowViewBinding.headerView.text = header
+            rowViewBinding.value.text = detail?.takeIf { it.isNotEmpty() } ?: "None"
         }
     }
 

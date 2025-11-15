@@ -24,6 +24,7 @@ import com.revenuecat.purchases.purchasePackageWith
 import com.revenuecat.purchases.purchaseProductWith
 import com.revenuecat.purchases_sample.R
 import com.revenuecat.purchases_sample.databinding.FragmentOfferingBinding
+import com.revenuecat.purchases_sample.databinding.RowViewBinding
 
 @SuppressWarnings("TooManyFunctions")
 class DeprecatedOfferingFragment : Fragment(), DeprecatedPackageCardAdapter.PackageCardAdapterListener {
@@ -59,7 +60,14 @@ class DeprecatedOfferingFragment : Fragment(), DeprecatedPackageCardAdapter.Pack
 
     private fun populateOfferings(offerings: Offerings) {
         val offering = offerings.getOffering(offeringId) ?: return
-        binding.offering = offering
+        
+        // Update offering details manually
+        binding.offeringDetailsName.text = offering.identifier
+        offering.serverDescription?.let { description ->
+            binding.offeringDetailsServerDescription.headerView.text = "Description:"
+            binding.offeringDetailsServerDescription.value.text = description
+        }
+        binding.offeringDetailsOpenWplButton.visibility = if (offering.webCheckoutURL != null) View.VISIBLE else View.GONE
 
         binding.offeringDetailsPackagesRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.offeringDetailsPackagesRecycler.adapter =

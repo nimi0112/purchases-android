@@ -8,7 +8,7 @@ apply(from = "$rootDir/base-application.gradle")
 
 android {
     buildFeatures {
-        dataBinding = true
+        viewBinding = true
     }
 
     defaultConfig {
